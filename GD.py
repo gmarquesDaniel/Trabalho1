@@ -2,10 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
+import warnings
 from sklearn import preprocessing
+from sklearn import linear_model
+import random
 
-#X = np.array(([1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 9], [1, 10], [1, 100]))
-#Y = np.array(([1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [100]))
+warnings.filterwarnings("ignore")
+
+# X = np.array(([1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 9], [1, 10], [1, 100]))
+# Y = np.array(([1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [100]))
 
 X = pd.read_csv('E:\Facul\MC886\Trabalho1\diamonds-dataset\diamonds-train.csv', delimiter=',',
                                                                                 header=0,
@@ -35,38 +40,43 @@ X = np.append(uns, X, axis=1)
 Y = Y.values
 
 
-#X = np.array(([1, 1], [1, 2], [1, 3], [1, 4]))
-#Y = np.array(([1], [2], [3], [4]))
+# X = np.array(([1, 1], [1, 2], [1, 3], [1, 4]))
+# Y = np.array(([1], [2], [3], [4]))
 
-#N = 100
+# N = 100
 
-#X = np.empty((N,2))
-#Y = np.empty(N)
+# X = np.empty((N,2))
+# Y = np.empty(N)
 #
-#for i in range(N):
+# for i in range(N):
 #    X[i][0] = 1
 #    X[i][1] = i
 #    Y[i]    = i
 #
-#print(X)
-#print(X_normalized)
-#print(Y)
+# print(X)
+# print(X_normalized)
+# print(Y)
+
+def scikitReg():
+    regr = linear_model.SGDRegressor(max_iter=1000, eta0=0.01)
+    regr.fit(X, Y)
+    params = regr.coef_
+    print(params)
 
 
-
-class model:
-
+class Model:
 
     def training_BatchGD(X, Y, learning_rate, epochs):
 
-        #Data Modification
+        # Data Modification
         X_transpose = np.transpose(X)
         Y_transpose = np.transpose(Y)
 
-        #Setting internal variables
+        # Setting internal variables
         N_data, N_features = np.shape(X)
         W = np.zeros(N_features)
         Cost = np.empty(epochs)
+        Ws = np.empty(epochs*10).reshape(epochs, 10)
 
         #Main loop
         for i in range(epochs):
@@ -76,12 +86,17 @@ class model:
             dCost = np.dot (Loss, X) / N_data
 
             W = W - learning_rate * dCost
+
+            Ws[i] = W
+
             print(i)
         print(f' Cost: {dCost} \n   W: {W}   \n ------------------')
-        #print((Cost))
+        # print((Cost))
 
         plt.plot(Cost, 'ro')
         plt.show()
+
+        return Ws
 
     def training_StochasticGD(X, Y, learning_rate, epochs):
 
@@ -168,9 +183,61 @@ class model:
         plt.plot(Cost, 'ro')
         plt.show()
 
-#Data_Generator(100)
+    def solveLinearEquation(W, example):
+        resultado = W[0]
 
-#model.training_BatchGD(X, Y, 0.01, 100)
-#model.training_StochasticGD(X, Y, 0.01, 50)
-model.training_MiniBatchGD(X, Y, 0.001, 1000, 5000)
+        for i in range(len(W) - 1):
+            resultado += W[i + 1] * example[i]
+
+        return resultado
+
+    def normalEquation(X, Y):
+        X_transpose = np.transpose(X)
+        Z = np.dot(X_transpose, X)
+        Z = np.linalg.inv(Z)
+        Z = np.dot(Z, X_transpose)
+        W = np.dot(Z, Y)
+        print(W)
+
+    def getValidationTest(X, Y, percentualSize):
+        rows = np.size(X, 0)
+        columns = len(X[0])
+        vElements = round(percentualSize * rows)
+        xValidation = np.ndarray(0)
+        yValidation = np.ndarray(0)
+
+        for i in range(vElements):
+            row = random.randint(0, rows-1)
+
+            xValidation = np.append(xValidation, X[row])
+            yValidation = np.append(yValidation, Y[row])
+            X = np.delete(X, row, axis=0)
+            Y = np.delete(Y, row, axis=0)
+
+            rows -= 1
+
+        xValidation = xValidation.reshape(vElements, columns)
+        yValidation = yValidation.reshape(vElements, 1)
+
+        return X, Y, xValidation, yValidation
+
+    def validate(Ws, xValidation, yValidation):
+        predictions = np.ndarray(0)
+
+        for W in Ws:
+            for diamond in xValidation:
+                predictions = np.append(predictions, Model.solveLinearEquation(W, diamond))
+                print(predictions[W])
+
+
+# Data_Generator(100)
+
+X, Y, xValidation, yValidation = Model.getValidationTest(X, Y, 0.4)
+Ws = Model.training_BatchGD(X, Y, 0.01, 10)
+Model.validate(Ws, xValidation, yValidation)
+
+# Model.training_StochasticGD(X, Y, 0.01, 50)
+# Model.training_MiniBatchGD(X, Y, 0.001, 1000, 5000)
+# scikitReg()
+# Model.normalEquation(X, Y)
 
